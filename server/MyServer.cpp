@@ -69,6 +69,7 @@ int MyServer::runServer() {
                                            reinterpret_cast<socklen_t *>(&len_addr));
                     FD_SET( client_socket, &client_socks );
                     printf("New client connected and added to socket set\n");
+//                    TODO handshake
                 }
                     // je to klientsky socket ? prijmem data
                 else {
