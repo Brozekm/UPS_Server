@@ -33,6 +33,10 @@ private:
     fd_set client_socks, tests;
 
     int init();
+
+    int cbufLength();
+
+    void deleteAllSocketConnections(int fd);
 };
 
 

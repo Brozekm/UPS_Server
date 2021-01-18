@@ -3,6 +3,9 @@
 //
 
 #include "MyServer.h"
+#include "../requests/CommunicationParser.h"
+#include "../Game/Player.h"
+#include "../Game/GameRPS.h"
 
 MyServer::MyServer() {
     int r_value =  init();
@@ -18,6 +21,10 @@ int MyServer::init(){
 
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
+    int enableOpt = 1;
+    if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &enableOpt, sizeof(int))< 0){
+        std::cout << "Address re-usability failed!" << std:: endl;
+    }
     memset(&my_addr, 0, sizeof(struct sockaddr_in));
 
     my_addr.sin_family = AF_INET;
@@ -77,12 +84,20 @@ int MyServer::runServer() {
                     // mame co cist
                     if (a2read > 0){
                         recv(fd, &cbuf, 32, 0);
-//                            TODO after receiving
+                        std::string reqStr(cbuf, cbufLength());
+                        Response response(CommunicationParser::clientReqParser(fd,reqStr));
+                        if(response.successful){
+                            send(fd, response.response.c_str(), response.response.length(),0);
+                        }else{
+                            send(fd, response.response.c_str(), response.response.length(),0);
+                            deleteAllSocketConnections(fd);
+                            printf("Client logged out and was removed from socket set for using wrong protocol\n");
+                        }
+
                     }
                         // na socketu se stalo neco spatneho
                     else {
-                        close(fd);
-                        FD_CLR( fd, &client_socks );
+                        deleteAllSocketConnections(fd);
                         printf("Client logged out and was removed from socket set\n");
                     }
                 }
@@ -91,3 +106,43 @@ int MyServer::runServer() {
 
     }
 }
+
+int MyServer::cbufLength() {
+    int length = 0;
+    for(char i : cbuf){
+        if (i == '\n'){
+            break;
+        }
+        length++;
+    }
+    return length;
+}
+
+void MyServer::deleteAllSocketConnections(int fd) {
+    for (int i=0; i<Players::allPlayers.size(); i++){
+        if(fd == Players::allPlayers[i].socket){
+            if(Players::allPlayers[i].state == IN_GAME){
+                for(int y = 0 ; y < Games::allGames.size(); y++){
+                    if(Games::allGames[y].player_1.id == Players::allPlayers[i].id){
+                            std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(Games::allGames[y].score_2)+"|"+std::to_string(Games::allGames[y].score_1)+"\n";
+                            send(Games::allGames[y].player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                            Games::allGames.erase(Games::allGames.begin()+y);
+                    }else if(Games::allGames[y].player_2.id == Players::allPlayers[i].id){
+                        std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(Games::allGames[y].score_1)+"|"+std::to_string(Games::allGames[y].score_2)+"\n";
+                        send(Games::allGames[y].player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                        Games::allGames.erase(Games::allGames.begin()+y);
+                    }
+                }
+                Players::allPlayers.erase(Players::allPlayers.begin()+i);
+            }else{
+                Players::allPlayers.erase(Players::allPlayers.begin()+i);
+            }
+        }
+    }
+    close(fd);
+    FD_CLR( fd, &client_socks );
+}
+
+
+
+

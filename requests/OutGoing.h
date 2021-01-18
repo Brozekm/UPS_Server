@@ -5,6 +5,8 @@
 #ifndef UPS_SEM_SERVER_OUTGOING_H
 #define UPS_SEM_SERVER_OUTGOING_H
 
+#define LOGIN_SUC 202
+#define LOGOUT_SUC 203
 
 class OutGoing {
 
