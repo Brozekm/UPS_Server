@@ -161,6 +161,7 @@ Response CommunicationParser::playGame(int id, const std::string& move) {
                 }
                 Games::allGames.at(i).lastMove_1 = move;
                 Games::allGames.at(i).player_1.state = WAIT_FOR_OPP_MOVE;
+                return Response(true, std::to_string(WAIT_FOR_OPP_MOVE));
             }
 
         } else if (id == Games::allGames.at(i).player_2.id){
@@ -170,6 +171,7 @@ Response CommunicationParser::playGame(int id, const std::string& move) {
                 }
                 Games::allGames.at(i).lastMove_2 = move;
                 Games::allGames.at(i).player_2.state = WAIT_FOR_OPP_MOVE;
+                return Response(true, std::to_string(WAIT_FOR_OPP_MOVE));
             }
 
         }

@@ -8,7 +8,7 @@ std::vector<GameRPS> Games::allGames;
 
 Response Games::resolveMovesInGame(int gameIndex) {
     if ((Games::allGames.at(gameIndex).lastMove_1 == Games::allGames.at(gameIndex).lastMove_2 )){
-        //TODO DRAW
+        //TODO DRAW - REMINDER ALSO SEND THE MOVES _ SO CLIENT CAN SEE THEM
     }else if ((Games::allGames.at(gameIndex).lastMove_1 == validMoves.at(1)) && (Games::allGames.at(gameIndex).lastMove_2 == validMoves.at(2))){
 //        TODO PLAYER 2 ADD POINT - check for win
     }else if ((Games::allGames.at(gameIndex).lastMove_1 == validMoves.at(1)) && (Games::allGames.at(gameIndex).lastMove_2 == validMoves.at(3))){
