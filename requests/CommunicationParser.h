@@ -12,6 +12,7 @@
 #define NEW_PLAYER_CREATED 202
 #define RECONNECTED 203
 #define SUCCESSFUL_LOGOUT 204
+#define GAME_DATA 205
 #define WAIT_FOR_OPP_MOVE 206
 #define LOSE 207
 #define WIN 208
@@ -21,10 +22,12 @@
 //Error codes
 #define WRONG_PROTOCOL 400
 #define UNKNOWN_REQUEST 401
+#define UNKNOWN_MOVE 402
 #define WRONG_PLAYER_ID 410
 #define INVALID_NICK 411
 #define PLAYER_HAVE_NO_GAME 412
 #define UNSUCCESSFUL_LOGOUT 413
+#define UNSUCCESSFUL_SURR 414
 // Types of requests
 #define LOGIN 2
 #define LOGOUT 3

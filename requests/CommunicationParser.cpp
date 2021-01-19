@@ -136,16 +136,74 @@ Response CommunicationParser::logoutPlayer(int id, const std::string& nick) {
             }
         }
     }
+    std::cout << "Logging out failed for player ("<< nick << ", id: " << id << ")" << std::endl;
     return Response(false, std::to_string(UNSUCCESSFUL_LOGOUT)+"\n");
 }
 
+
+
 Response CommunicationParser::playGame(int id, const std::string& move) {
-    return Response(false,"WRONG");
+    int notValid = -1;
+    for(const std::string& validMove : Games::validMoves){
+        if (validMove == move){
+            notValid=1;
+        }
+    }
+    if (notValid<0){
+        return Response(false, std::to_string(UNKNOWN_MOVE));
+    }
+
+    for (int i = 0; i < Games::allGames.size(); ++i) {
+        if (id == Games::allGames.at(i).player_1.id){
+            if (Games::allGames.at(i).player_1.state == IN_GAME){
+                if (Games::allGames.at(i).player_2.state == WAIT_FOR_OPP_MOVE){
+                    return Games::resolveMovesInGame(i);
+                }
+                Games::allGames.at(i).lastMove_1 = move;
+                Games::allGames.at(i).player_1.state = WAIT_FOR_OPP_MOVE;
+            }
+
+        } else if (id == Games::allGames.at(i).player_2.id){
+            if(Games::allGames.at(i).player_2.state == IN_GAME){
+                if (Games::allGames.at(i).player_1.state == WAIT_FOR_OPP_MOVE){
+                    return Games::resolveMovesInGame(i);
+                }
+                Games::allGames.at(i).lastMove_2 = move;
+                Games::allGames.at(i).player_2.state = WAIT_FOR_OPP_MOVE;
+            }
+
+        }
+    }
+
+    return Response(false,std::to_string(PLAYER_HAVE_NO_GAME));
 }
 
-Response CommunicationParser::surrender(int id, const std::string& nick) {
 
-    return Response(false, __cxx11::basic_string());
+Response CommunicationParser::surrender(int id, const std::string& nick) {
+    for (int i = 0; i < Games::allGames.size(); ++i) {
+        if(Games::allGames.at(i).player_1.id == id){
+            if (nick == Games::allGames.at(i).player_1.nick){
+                int sc1 = Games::allGames.at(i).score_1;
+                int sc2 = Games::allGames.at(i).score_2;
+                std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1);
+                send(Games::allGames.at(i).player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                Games::allGames.erase(Games::allGames.begin()+i);
+                return Response(true, std::to_string(LOSE)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2)+"\n");
+            }
+        } else if (Games::allGames.at(i).player_2.id == id){
+            if (nick == Games::allGames.at(i).player_2.nick){
+                int sc1 = Games::allGames.at(i).score_1;
+                int sc2 = Games::allGames.at(i).score_2;
+                std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2);
+                send(Games::allGames.at(i).player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                Games::allGames.erase(Games::allGames.begin()+i);
+                return Response(true, std::to_string(LOSE)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1)+"\n");
+            }
+        }
+
+    }
+    std::cout << "Surrender committed by player ("<< nick << ", id: " << id << ") failed." << std::endl;
+    return Response(false, std::to_string(UNSUCCESSFUL_SURR));
 }
 
 
