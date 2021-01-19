@@ -11,7 +11,7 @@
 #include "Player.h"
 #include "../requests/CommunicationParser.h"
 
-
+#define WINS_FOR_VICTORY 3
 class GameRPS{
 private:
 
@@ -29,10 +29,14 @@ public:
 };
 
 class Games{
+private:
+    static Response addPointToPlayer2(int index, int playerId);
+    static Response addPointToPlayer1(int index,int playerId);
+    static Response sameMoves(int index,int playerId);
 public:
     static std::vector<GameRPS> allGames;
     inline static const std::vector<std::string> validMoves {"Rock", "Paper", "Scissors"};
-    static Response resolveMovesInGame(int gameIndex);
+    static Response resolveMovesInGame(int gameIndex, int currentPlayerId);
 };
 
 #endif //UPS_SEM_SERVER_GAMERPS_H

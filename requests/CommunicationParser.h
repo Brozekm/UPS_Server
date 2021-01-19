@@ -17,6 +17,7 @@
 #define LOSE 207
 #define WIN 208
 #define WIN_SURR 209
+#define READY_FOR_PLAY 210
 #define NICK_IS_USED 220
 
 //Error codes

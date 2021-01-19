@@ -11,7 +11,7 @@
 
 #define NOT_IN_GAME 0
 #define IN_GAME 1
-#define WAIT_FOR_OPP_MOVE 2
+#define WAIT 2
 #define DISCONNECTED 3
 
 class Player{

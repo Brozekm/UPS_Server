@@ -30,8 +30,8 @@ Response CommunicationParser::clientReqParser(int fd, const std::string &request
                 return unknownReq;
         }
     }
-    Response wrongProtocol(false, std::to_string(WRONG_PROTOCOL)+"\n");
-    return wrongProtocol;
+
+    return Response (false, std::to_string(WRONG_PROTOCOL)+"\n");
 }
 
 ClientReq CommunicationParser::parseRequest(const std::string &request) {
@@ -156,22 +156,24 @@ Response CommunicationParser::playGame(int id, const std::string& move) {
     for (int i = 0; i < Games::allGames.size(); ++i) {
         if (id == Games::allGames.at(i).player_1.id){
             if (Games::allGames.at(i).player_1.state == IN_GAME){
-                if (Games::allGames.at(i).player_2.state == WAIT_FOR_OPP_MOVE){
-                    return Games::resolveMovesInGame(i);
+                if (Games::allGames.at(i).player_2.state == WAIT){
+                    Games::allGames.at(i).lastMove_1 = move;
+                    return Games::resolveMovesInGame(i, id);
                 }
                 Games::allGames.at(i).lastMove_1 = move;
-                Games::allGames.at(i).player_1.state = WAIT_FOR_OPP_MOVE;
-                return Response(true, std::to_string(WAIT_FOR_OPP_MOVE));
+                Games::allGames.at(i).player_1.state = WAIT;
+                return Response(true, std::to_string(WAIT_FOR_OPP_MOVE)+"\n");
             }
 
         } else if (id == Games::allGames.at(i).player_2.id){
             if(Games::allGames.at(i).player_2.state == IN_GAME){
-                if (Games::allGames.at(i).player_1.state == WAIT_FOR_OPP_MOVE){
-                    return Games::resolveMovesInGame(i);
+                if (Games::allGames.at(i).player_1.state == WAIT){
+                    Games::allGames.at(i).lastMove_2 = move;
+                    return Games::resolveMovesInGame(i, id);
                 }
                 Games::allGames.at(i).lastMove_2 = move;
-                Games::allGames.at(i).player_2.state = WAIT_FOR_OPP_MOVE;
-                return Response(true, std::to_string(WAIT_FOR_OPP_MOVE));
+                Games::allGames.at(i).player_2.state = WAIT;
+                return Response(true, std::to_string(WAIT_FOR_OPP_MOVE)+"\n");
             }
 
         }
