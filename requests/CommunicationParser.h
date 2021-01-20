@@ -9,6 +9,7 @@
 #include <vector>
 
 //Successful CODES
+#define PING_SUCCESS 100
 #define NEW_PLAYER_CREATED 202
 #define RECONNECTED 203
 #define SUCCESSFUL_LOGOUT 204
@@ -19,7 +20,10 @@
 #define WIN_SURR 209
 #define READY_FOR_PLAY 210
 #define LOOKING_FOR_NEW_GAME 211
+#define OPP_DISCONNECTED 212
 #define NICK_IS_USED 220
+#define DRAW 213
+#define SUCCESSFUL_DISCONNECT 214
 
 //Error codes
 #define WRONG_PROTOCOL 400
@@ -32,7 +36,15 @@
 #define UNSUCCESSFUL_SURR 414
 #define PLAY_STILL_IN_GAME 415
 #define PLAYER_NO_LONGER_EXITS 416
+#define UNSUCCESSFUL_DISCONNECT 417
+
+
+#define ERROR_RESOLVE_MOVES 500
+#define ERROR_WHILE_SAME_MOVES 501
+#define ERROR_ADDING_POINT 502
 // Types of requests
+#define PING 0
+#define DISCONNECT 1
 #define LOGIN 2
 #define LOGOUT 3
 #define PLAY 4
@@ -64,8 +76,11 @@ private:
     static Response playGame(int id, const std::string& move);
     static Response surrender(int id, const std::string& basicString);
     static Response findGame(int id, const std::string& basicString);
+    static Response exitClinet(int fd, const std::string& basicString);
 public:
     static Response clientReqParser(int fd, const std::string& request);
+
+
 };
 
 #endif //UPS_SEM_SERVER_COMMUNICATIONPARSER_H

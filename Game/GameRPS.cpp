@@ -33,7 +33,7 @@ Response Games::resolveMovesInGame(int gameIndex, int currentPlayerId) {
     }
 
 
-    return Response(false, "ERROR RESOLVING GAME MOVES");
+    return Response(false, std::to_string(ERROR_RESOLVE_MOVES)+"\n");
 }
 
 Response Games::addPointToPlayer2(int index, int playerId) {
@@ -65,7 +65,7 @@ Response Games::addPointToPlayer2(int index, int playerId) {
     }
 
 
-    return Response(false, "ERRROR GAME ADD POINT to player 2");
+    return Response(false, std::to_string(ERROR_ADDING_POINT)+"\n");
 }
 
 Response Games::addPointToPlayer1(int index, int playerId) {
@@ -96,7 +96,7 @@ Response Games::addPointToPlayer1(int index, int playerId) {
         return Response(true, std::to_string(READY_FOR_PLAY)+"|"+std::to_string(Games::allGames.at(index).score_1)+"|"+std::to_string(Games::allGames.at(index).score_2)+"\n");
     }
 
-    return Response(false, "ERRROR GAME ADD POINT to player 1");
+    return Response(false, std::to_string(ERROR_ADDING_POINT)+"\n");
 }
 
 Response Games::sameMoves(int index, int playerId) {
@@ -110,5 +110,5 @@ Response Games::sameMoves(int index, int playerId) {
         send(Games::allGames.at(index).player_1.socket, tmpResponse.c_str(), tmpResponse.length(), 0);
         return Response(true, std::to_string(READY_FOR_PLAY)+"|"+std::to_string(Games::allGames.at(index).score_2)+"|"+std::to_string(Games::allGames.at(index).score_1)+"\n");
     }
-    return Response(false, "ERROR SAME MOVES");
+    return Response(false, std::to_string(ERROR_WHILE_SAME_MOVES)+"\n");
 }

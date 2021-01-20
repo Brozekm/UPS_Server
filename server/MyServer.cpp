@@ -6,10 +6,15 @@
 #include "../requests/CommunicationParser.h"
 #include "../Game/Player.h"
 #include "../Game/GameRPS.h"
+#include <arpa/inet.h>
 
-MyServer::MyServer() {
-    int r_value =  init();
+MyServer::MyServer(const std::string& address, int port) {
+    int r_value =  init(address,port);
     if(r_value != 0){
+        if (r_value ==-2){
+            std::cout << "Incorrect port" << std::endl;
+            std::exit(1);
+        }
         perror("Server initialization failed");
         std::exit(1);
     }else{
@@ -17,7 +22,10 @@ MyServer::MyServer() {
     }
 }
 
-int MyServer::init(){
+int MyServer::init(const std::string& address, int port){
+    if (!correctPort(port)){
+        return -2;
+    }
 
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -28,8 +36,8 @@ int MyServer::init(){
     memset(&my_addr, 0, sizeof(struct sockaddr_in));
 
     my_addr.sin_family = AF_INET;
-    my_addr.sin_port = htons(10001);
-    my_addr.sin_addr.s_addr = INADDR_ANY;
+    my_addr.sin_port = htons(port);
+    my_addr.sin_addr.s_addr = inet_addr(address.c_str());
 
     return_value = bind(server_socket, (struct sockaddr *) &my_addr, \
             sizeof(struct sockaddr_in));
@@ -59,29 +67,28 @@ int MyServer::runServer() {
     while(true){
 
         tests = client_socks;
-        // sada deskriptoru je po kazdem volani select prepsana sadou deskriptoru kde se neco delo
         return_value = select( FD_SETSIZE, &tests, ( fd_set *)0, ( fd_set *)0, ( struct timeval *)0 );
 
         if (return_value < 0) {
             printf("Select - ERR\n");
             return -1;
         }
-        // vynechavame stdin, stdout, stderr
+
         for( fd = 3; fd < FD_SETSIZE; fd++ ){
-            // je dany socket v sade fd ze kterych lze cist ?
+
             if( FD_ISSET( fd, &tests ) ){
-                // je to server socket ? prijmeme nove spojeni
+
                 if (fd == server_socket){
                     client_socket = accept(server_socket, (struct sockaddr *) &peer_addr,
                                            reinterpret_cast<socklen_t *>(&len_addr));
                     FD_SET( client_socket, &client_socks );
                     printf("New client connected and added to socket set\n");
                 }
-                    // je to klientsky socket ? prijmem data
+
                 else {
-                    // pocet bajtu co je pripraveno ke cteni
+
                     ioctl( fd, FIONREAD, &a2read );
-                    // mame co cist
+
                     if (a2read > 0){
                         recv(fd, &cbuf, 32, 0);
                         std::string reqStr(cbuf, cbufLength());
@@ -95,10 +102,11 @@ int MyServer::runServer() {
                         }
 
                     }
-                        // na socketu se stalo neco spatneho
+
                     else {
-                        deleteAllSocketConnections(fd);
-                        printf("Client logged out and was removed from socket set\n");
+                        clientDisconnected(fd);
+//                        deleteAllSocketConnections(fd);
+                        printf("Client disconnected\n");
                     }
                 }
             }
@@ -139,6 +147,71 @@ void MyServer::deleteAllSocketConnections(int fd) {
             }
         }
     }
+    close(fd);
+    FD_CLR( fd, &client_socks );
+}
+
+bool MyServer::correctPort(int port) {
+    if ((port>0)&& (port<65000)){
+        for(int i : invalidPorts){
+            if (port == i){
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+void MyServer::clientDisconnected(int fd) {
+    for(Player& tmpPlayer: Players::allPlayers){
+        if (tmpPlayer.socket == fd){
+            if (tmpPlayer.state == IN_GAME){
+                for(GameRPS& tmpGame: Games::allGames){
+                    if (tmpGame.player_1.id == tmpPlayer.id){
+                        if (tmpGame.player_2.state == IN_GAME){
+                        std::string tmpResponse = std::to_string(OPP_DISCONNECTED)+"\n";
+                        send(tmpGame.player_2.socket, tmpResponse.c_str(), tmpResponse.length(),0);
+                        tmpPlayer.state= DISCONNECTED;
+                        }else if (tmpGame.player_2.state == DISCONNECTED){
+                            for (int i = 0; i < Games::allGames.size(); ++i) {
+                                if ((Games::allGames.at(i).player_1.id == tmpPlayer.id) || (Games::allGames.at(i).player_2.id == tmpPlayer.id)){
+                                    for (int y = 0; y < Players::allPlayers.size(); ++y) {
+                                        if ((Players::allPlayers.at(y).id == Games::allGames.at(i).player_1.id) || (Players::allPlayers.at(y).id == Games::allGames.at(i).player_2.id)){
+                                            Players::allPlayers.erase(Players::allPlayers.begin()+y);
+                                        }
+                                    }
+                                    Games::allGames.erase(Games::allGames.begin()+i);
+                                }
+                            }
+                        }
+                    }else if (tmpGame.player_2.id == tmpPlayer.id){
+                        if (tmpGame.player_1.state == IN_GAME) {
+                            std::string tmpResponse = std::to_string(OPP_DISCONNECTED) + "\n";
+                            send(tmpGame.player_1.socket, tmpResponse.c_str(), tmpResponse.length(), 0);
+                            tmpPlayer.state= DISCONNECTED;
+                        }else if(tmpGame.player_1.state == DISCONNECTED){
+                            for (int i = 0; i < Games::allGames.size(); ++i) {
+                                if ((Games::allGames.at(i).player_1.id == tmpPlayer.id) || (Games::allGames.at(i).player_2.id == tmpPlayer.id)){
+                                    for (int y = 0; y < Players::allPlayers.size(); ++y) {
+                                        if ((Players::allPlayers.at(y).id == Games::allGames.at(i).player_1.id) || (Players::allPlayers.at(y).id == Games::allGames.at(i).player_2.id)){
+                                            Players::allPlayers.erase(Players::allPlayers.begin()+y);
+                                        }
+                                    }
+                                    Games::allGames.erase(Games::allGames.begin()+i);
+                                }
+                            }
+
+                        }
+                    }
+                }
+            } else{
+                tmpPlayer.state = DISCONNECTED;
+            }
+        }
+
+    }
+
     close(fd);
     FD_CLR( fd, &client_socks );
 }

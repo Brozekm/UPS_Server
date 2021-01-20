@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <sys/socket.h>
+#include <regex>
 #include "CommunicationParser.h"
 #include "../Game/Player.h"
 #include "../Game/GameRPS.h"
@@ -15,6 +16,12 @@ Response CommunicationParser::clientReqParser(int fd, const std::string &request
 
     if(clReq.type !=-1){
         switch (clReq.type) {
+            case PING:{
+                return Response(true, std::to_string(PING_SUCCESS)+"\n");
+            }
+            case DISCONNECT:{
+                return exitClinet(clReq.id, clReq.param);
+            }
             case LOGIN:
                 return loginPlayer(fd, clReq.id,clReq.param);
             case LOGOUT:
@@ -48,6 +55,9 @@ ClientReq CommunicationParser::parseRequest(const std::string &request) {
         std::cout << "Wrong number of parameters" << std::endl;
         return ClientReq(-1,-1,"");
     }
+    if(!std::regex_match(cliParams.at(2), std::regex("[a-zA-Z0-9]*"))){
+        return ClientReq(-1,-1,"");
+    }
     try {
         int type = std::stoi(cliParams.at(0));
         int id = std::stoi(cliParams.at(1));
@@ -61,7 +71,7 @@ ClientReq CommunicationParser::parseRequest(const std::string &request) {
         return  ClientReq(type,id,cliParams.at(2));
     } catch (...) {
         std::cout << "Parameter is not expected data type" << std::endl;
-        return   ClientReq(-1,-1,"");
+        return ClientReq(-1,-1,"");
     }
 
 
@@ -78,8 +88,17 @@ Response CommunicationParser::loginPlayer(int fd, int id, const std::string& par
                      i.socket = fd;
                      i.state = NOT_IN_GAME;
                      for(const GameRPS& oneGame: Games::allGames){
-                         if((oneGame.player_1.id == i.id)||(oneGame.player_2.id == id)){
+                         if(oneGame.player_1.id == i.id){
                              i.state = IN_GAME;
+                             std::string tmpResponse = std::to_string(GAME_DATA)+"|"+std::to_string(oneGame.score_2)+"|"+std::to_string(oneGame.score_1)+"|"+oneGame.player_1.nick+"\n";
+                             send(oneGame.player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                             return Response(true, std::to_string(RECONNECTED)+"|"+std::to_string(i.id)+"|"+std::to_string(i.state)+"\n");
+
+                         }else if (oneGame.player_2.id == id){
+                             i.state = IN_GAME;
+                             std::string tmpResponse = std::to_string(GAME_DATA)+"|"+std::to_string(oneGame.score_1)+"|"+std::to_string(oneGame.score_2)+"|"+oneGame.player_2.nick+"\n";
+                             send(oneGame.player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                             return Response(true, std::to_string(RECONNECTED)+"|"+std::to_string(i.id)+"|"+std::to_string(i.state)+"\n");
                          }
                      }
                      return Response(true, std::to_string(RECONNECTED)+"|"+std::to_string(i.id)+"|"+std::to_string(i.state)+"\n");
@@ -195,6 +214,15 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
             if (nick == Games::allGames.at(i).player_1.nick){
                 int sc1 = Games::allGames.at(i).score_1;
                 int sc2 = Games::allGames.at(i).score_2;
+                for (int j = 0; j < Players::allPlayers.size(); ++j) {
+                    if (Players::allPlayers.at(j).id == Games::allGames.at(i).player_2.id){
+                        if (Players::allPlayers.at(j).state == DISCONNECTED){
+                                Players::allPlayers.erase(Players::allPlayers.begin()+j);
+                            Games::allGames.erase(Games::allGames.begin()+i);
+                            return Response(true, std::to_string(DRAW)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2)+"\n");
+                        }
+                    }
+                }
                 std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1)+"\n";
                 send(Games::allGames.at(i).player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                 Games::allGames.erase(Games::allGames.begin()+i);
@@ -204,6 +232,16 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
             if (nick == Games::allGames.at(i).player_2.nick){
                 int sc1 = Games::allGames.at(i).score_1;
                 int sc2 = Games::allGames.at(i).score_2;
+                for (int j = 0; j < Players::allPlayers.size(); ++j) {
+                    if (Players::allPlayers.at(j).id == Games::allGames.at(i).player_1.id){
+                        if (Players::allPlayers.at(j).state == DISCONNECTED){
+                            Players::allPlayers.erase(Players::allPlayers.begin()+j);
+                            Games::allGames.erase(Games::allGames.begin()+i);
+                            return Response(true, std::to_string(DRAW)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1)+"\n");
+                        }
+                    }
+                }
+
                 std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2)+"\n";
                 send(Games::allGames.at(i).player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                 Games::allGames.erase(Games::allGames.begin()+i);
@@ -245,6 +283,33 @@ Response CommunicationParser::findGame(int id, const std::string& nick) {
     }
 
     return Response(false, std::to_string(PLAYER_NO_LONGER_EXITS)+"\n");
+}
+
+Response CommunicationParser::exitClinet(int id, const std::string& nick) {
+    for(int i = 0 ; i< Players::allPlayers.size(); i++){
+        if(id == Players::allPlayers.at(i).id){
+            if (nick==Players::allPlayers.at(i).nick){
+                if (Players::allPlayers.at(i).state == 1){
+                    for(int y = 0 ; y < Games::allGames.size(); y++){
+                        if(Games::allGames[y].player_1.id == id){
+                            std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(Games::allGames[y].score_2)+"|"+std::to_string(Games::allGames[y].score_1)+"\n";
+                            send(Games::allGames[y].player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                            Games::allGames.erase(Games::allGames.begin()+y);
+                        }else if(Games::allGames[y].player_2.id == id){
+                            std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(Games::allGames[y].score_1)+"|"+std::to_string(Games::allGames[y].score_2)+"\n";
+                            send(Games::allGames[y].player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
+                            Games::allGames.erase(Games::allGames.begin()+y);
+                        }
+                    }
+                }
+                std::cout<<"Player ("<< Players::allPlayers.at(i).nick << ", id: " <<Players::allPlayers.at(i).id << ") logged out." << std::endl;
+                Players::allPlayers.erase(Players::allPlayers.begin()+i);
+                return Response(false, std::to_string(SUCCESSFUL_DISCONNECT)+ "\n");
+            }
+        }
+    }
+    std::cout << "Logging out failed for player ("<< nick << ", id: " << id << ")" << std::endl;
+    return Response(false, std::to_string(UNSUCCESSFUL_DISCONNECT)+"\n");
 }
 
 

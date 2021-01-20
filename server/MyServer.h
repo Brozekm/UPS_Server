@@ -19,10 +19,12 @@
 
 class MyServer {
 public:
-    MyServer();
+    MyServer(const std::string& address, int port);
     int runServer();
 
 private:
+    const std::vector<int> invalidPorts{20,21,22,25,53,80,110,443};
+
     int server_socket;
     int client_socket, fd;
     int return_value;
@@ -32,11 +34,15 @@ private:
     struct sockaddr_in my_addr, peer_addr;
     fd_set client_socks, tests;
 
-    int init();
+    int init(const std::string& address, int port);
 
     int cbufLength();
 
     void deleteAllSocketConnections(int fd);
+
+    bool correctPort(int port);
+
+    void clientDisconnected(int fd);
 };
 
 
