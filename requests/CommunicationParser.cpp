@@ -83,19 +83,21 @@ Response CommunicationParser::loginPlayer(int fd, int id, const std::string& par
             return Response(false, std::to_string(INVALID_NICK)+"\n");
         }
          for(Player &i: Players::allPlayers){
-             if (i.nick.compare(params) == 0){
+             if (i.nick == params){
                  if (i.state ==DISCONNECTED){
                      i.socket = fd;
                      i.state = NOT_IN_GAME;
-                     for(const GameRPS& oneGame: Games::allGames){
+                     for(GameRPS& oneGame: Games::allGames){
                          if(oneGame.player_1.id == i.id){
                              i.state = IN_GAME;
+                             oneGame.player_1 = i;
                              std::string tmpResponse = std::to_string(GAME_DATA)+"|"+std::to_string(oneGame.score_2)+"|"+std::to_string(oneGame.score_1)+"|"+oneGame.player_1.nick+"\n";
                              send(oneGame.player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                              return Response(true, std::to_string(RECONNECTED)+"|"+std::to_string(i.id)+"|"+std::to_string(i.state)+"\n");
 
-                         }else if (oneGame.player_2.id == id){
+                         }else if (oneGame.player_2.id == i.id){
                              i.state = IN_GAME;
+                             oneGame.player_2 = i;
                              std::string tmpResponse = std::to_string(GAME_DATA)+"|"+std::to_string(oneGame.score_1)+"|"+std::to_string(oneGame.score_2)+"|"+oneGame.player_2.nick+"\n";
                              send(oneGame.player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                              return Response(true, std::to_string(RECONNECTED)+"|"+std::to_string(i.id)+"|"+std::to_string(i.state)+"\n");
