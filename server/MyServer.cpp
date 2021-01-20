@@ -28,7 +28,7 @@ int MyServer::init(){
     memset(&my_addr, 0, sizeof(struct sockaddr_in));
 
     my_addr.sin_family = AF_INET;
-    my_addr.sin_port = htons(10000);
+    my_addr.sin_port = htons(10001);
     my_addr.sin_addr.s_addr = INADDR_ANY;
 
     return_value = bind(server_socket, (struct sockaddr *) &my_addr, \

@@ -44,7 +44,7 @@ Response Games::addPointToPlayer2(int index, int playerId) {
             std::string tmpResponse = std::to_string(LOSE)+"|"+std::to_string(tmpGame.score_1)+"|"+std::to_string(tmpGame.score_2)+"\n";
             send(tmpGame.player_1.socket, tmpResponse.c_str(), tmpResponse.length(),0);
             Games::allGames.erase(Games::allGames.begin()+index);
-            return Response(true, std::to_string(WIN)+""+std::to_string(tmpGame.score_2)+"|"+std::to_string(tmpGame.score_1)+"\n");
+            return Response(true, std::to_string(WIN)+"|"+std::to_string(tmpGame.score_2)+"|"+std::to_string(tmpGame.score_1)+"\n");
         }
         std::string tmpResponse = std::to_string(READY_FOR_PLAY)+"|"+std::to_string(Games::allGames.at(index).score_1)+"|"+std::to_string(Games::allGames.at(index).score_2)+"\n";
         send(Games::allGames.at(index).player_1.socket, tmpResponse.c_str(), tmpResponse.length(),0);

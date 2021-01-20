@@ -25,6 +25,8 @@ Response CommunicationParser::clientReqParser(int fd, const std::string &request
                 return getGameData(clReq.id, clReq.param);
             case SURRENDER:
                 return surrender(clReq.id, clReq.param);
+            case FIND_GAME:
+                return findGame(clReq.id, clReq.param);
             default:
                 Response unknownReq(false, std::to_string(UNKNOWN_REQUEST)+"\n");
                 return unknownReq;
@@ -44,18 +46,22 @@ ClientReq CommunicationParser::parseRequest(const std::string &request) {
     }
     if(cliParams.size() != 3 ){
         std::cout << "Wrong number of parameters" << std::endl;
-        ClientReq cliReq(-1,-1, "");
-        return cliReq;
+        return ClientReq(-1,-1,"");
     }
     try {
         int type = std::stoi(cliParams.at(0));
         int id = std::stoi(cliParams.at(1));
-        ClientReq cliReq(type,id,cliParams.at(2));
-        return cliReq;
+        if (!cliParams.at(2).empty()){
+            if (cliParams.at(2).length()<=16){
+                return ClientReq (type,id,cliParams.at(2));
+            }
+
+        }
+
+        return  ClientReq(type,id,cliParams.at(2));
     } catch (...) {
         std::cout << "Parameter is not expected data type" << std::endl;
-        ClientReq cliReq(-1,-1,"");
-        return cliReq;
+        return   ClientReq(-1,-1,"");
     }
 
 
@@ -63,7 +69,7 @@ ClientReq CommunicationParser::parseRequest(const std::string &request) {
 
 Response CommunicationParser::loginPlayer(int fd, int id, const std::string& params) {
     if(id ==0 ){
-        if (params.length() < 3){
+        if ((params.length() < 3) || (params.length() > 16)){
             return Response(false, std::to_string(INVALID_NICK)+"\n");
         }
          for(Player &i: Players::allPlayers){
@@ -84,7 +90,7 @@ Response CommunicationParser::loginPlayer(int fd, int id, const std::string& par
          }
 
         Player newPlayer(params, NOT_IN_GAME, fd);
-        for(Player i : Players::allPlayers){
+        for(Player& i : Players::allPlayers){
             if(i.state == NOT_IN_GAME){
                 i.state = IN_GAME;
                 newPlayer.state = IN_GAME;
@@ -110,7 +116,7 @@ Response CommunicationParser::getGameData(int id, const std::string& nick) {
             return Response(true, std::to_string(GAME_DATA)+"|"+std::to_string(tmpGame.score_2)+"|"+std::to_string(tmpGame.score_1)+"|"+tmpGame.player_1.nick+"\n");
         }
     }
-    return Response(false, std::to_string(PLAYER_HAVE_NO_GAME));
+    return Response(false, std::to_string(PLAYER_HAVE_NO_GAME)+"\n");
 }
 
 Response CommunicationParser::logoutPlayer(int id, const std::string& nick) {
@@ -150,7 +156,7 @@ Response CommunicationParser::playGame(int id, const std::string& move) {
         }
     }
     if (notValid<0){
-        return Response(false, std::to_string(UNKNOWN_MOVE));
+        return Response(false, std::to_string(UNKNOWN_MOVE)+"\n");
     }
 
     for (int i = 0; i < Games::allGames.size(); ++i) {
@@ -179,7 +185,7 @@ Response CommunicationParser::playGame(int id, const std::string& move) {
         }
     }
 
-    return Response(false,std::to_string(PLAYER_HAVE_NO_GAME));
+    return Response(false,std::to_string(PLAYER_HAVE_NO_GAME)+"\n");
 }
 
 
@@ -189,7 +195,7 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
             if (nick == Games::allGames.at(i).player_1.nick){
                 int sc1 = Games::allGames.at(i).score_1;
                 int sc2 = Games::allGames.at(i).score_2;
-                std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1);
+                std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1)+"\n";
                 send(Games::allGames.at(i).player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                 Games::allGames.erase(Games::allGames.begin()+i);
                 return Response(true, std::to_string(LOSE)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2)+"\n");
@@ -198,7 +204,7 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
             if (nick == Games::allGames.at(i).player_2.nick){
                 int sc1 = Games::allGames.at(i).score_1;
                 int sc2 = Games::allGames.at(i).score_2;
-                std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2);
+                std::string tmpResponse = std::to_string(WIN_SURR)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2)+"\n";
                 send(Games::allGames.at(i).player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                 Games::allGames.erase(Games::allGames.begin()+i);
                 return Response(true, std::to_string(LOSE)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1)+"\n");
@@ -207,7 +213,38 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
 
     }
     std::cout << "Surrender committed by player ("<< nick << ", id: " << id << ") failed." << std::endl;
-    return Response(false, std::to_string(UNSUCCESSFUL_SURR));
+    return Response(false, std::to_string(UNSUCCESSFUL_SURR)+"\n");
+}
+
+Response CommunicationParser::findGame(int id, const std::string& nick) {
+    for (GameRPS tmpGame: Games::allGames){
+        if ((tmpGame.player_2.id == id)||(tmpGame.player_1.id == id)){
+            return Response(false, std::to_string(PLAY_STILL_IN_GAME)+"\n");
+        }
+    }
+    for(Player& current : Players::allPlayers){
+        if (current.id == id){
+            if(current.nick == nick){
+                if (current.state == IN_GAME){
+                    for(Player& rand : Players::allPlayers){
+                        if(rand.state == NOT_IN_GAME){
+                            rand.state = IN_GAME;
+                            Games::allGames.emplace_back(GameRPS(current,rand));
+                            Response tmpResponse = getGameData(rand.id, rand.nick);
+                            send(rand.socket, tmpResponse.response.c_str(), tmpResponse.response.length(),0);
+                            current.state = IN_GAME;
+                            return Response(true, std::to_string(NEW_PLAYER_CREATED)+"|"+std::to_string(current.id)+"|"+std::to_string(current.state)+"\n");
+                        }
+                    }
+                    current.state = NOT_IN_GAME;
+                    return Response(true, std::to_string(LOOKING_FOR_NEW_GAME)+"\n");
+                }
+
+            }
+        }
+    }
+
+    return Response(false, std::to_string(PLAYER_NO_LONGER_EXITS)+"\n");
 }
 
 
