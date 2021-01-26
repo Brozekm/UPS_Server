@@ -16,8 +16,9 @@ int main(int argc, char** argv) {
         std::string address = argv[1];
         MyServer server(address,port);
         server.runServer();
+    } else{
+        std::cout << "Wrong number of parameters to run the server, correct format: <server_address> <server_port>" << std::endl;
     }
-    std::cout << "Wrong number of parameters to run the server, correct format: <server_address> <server_port>" << std::endl;
     return 0;
 }
 

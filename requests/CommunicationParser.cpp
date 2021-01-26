@@ -132,9 +132,14 @@ Response CommunicationParser::loginPlayer(int fd, int id, const std::string& par
 Response CommunicationParser::getGameData(int id, const std::string& nick) {
     for(const GameRPS& tmpGame: Games::allGames){
         if (id == tmpGame.player_1.id){
-            return Response(true, std::to_string(GAME_DATA)+"|"+std::to_string(tmpGame.score_1)+"|"+std::to_string(tmpGame.score_2)+"|"+tmpGame.player_2.nick+"\n");
+            if (nick == tmpGame.player_1.nick){
+                return Response(true, std::to_string(GAME_DATA)+"|"+std::to_string(tmpGame.score_1)+"|"+std::to_string(tmpGame.score_2)+"|"+tmpGame.player_2.nick+"\n");
+            } return Response(false, std::to_string(INVALID_NICK));
         } else if (id == tmpGame.player_2.id){
-            return Response(true, std::to_string(GAME_DATA)+"|"+std::to_string(tmpGame.score_2)+"|"+std::to_string(tmpGame.score_1)+"|"+tmpGame.player_1.nick+"\n");
+            if (nick == tmpGame.player_2.nick){
+                return Response(true, std::to_string(GAME_DATA)+"|"+std::to_string(tmpGame.score_2)+"|"+std::to_string(tmpGame.score_1)+"|"+tmpGame.player_1.nick+"\n");
+            }
+            return Response(false, std::to_string(INVALID_NICK));
         }
     }
     return Response(false, std::to_string(PLAYER_HAVE_NO_GAME)+"\n");
@@ -160,7 +165,7 @@ Response CommunicationParser::logoutPlayer(int id, const std::string& nick) {
                 std::cout<<"Player ("<< Players::allPlayers.at(i).nick << ", id: " <<Players::allPlayers.at(i).id << ") logged out." << std::endl;
                 Players::allPlayers.erase(Players::allPlayers.begin()+i);
                 return Response(true, std::to_string(SUCCESSFUL_LOGOUT)+ "\n");
-            }
+            } return Response(false, std::to_string(INVALID_NICK));
         }
     }
     std::cout << "Logging out failed for player ("<< nick << ", id: " << id << ")" << std::endl;
@@ -229,7 +234,7 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
                 send(Games::allGames.at(i).player_2.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                 Games::allGames.erase(Games::allGames.begin()+i);
                 return Response(true, std::to_string(LOSE)+"|"+std::to_string(sc1)+"|"+std::to_string(sc2)+"\n");
-            }
+            } return Response(false, std::to_string(INVALID_NICK));
         } else if (Games::allGames.at(i).player_2.id == id){
             if (nick == Games::allGames.at(i).player_2.nick){
                 int sc1 = Games::allGames.at(i).score_1;
@@ -248,7 +253,7 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
                 send(Games::allGames.at(i).player_1.socket, tmpResponse.c_str(),tmpResponse.length(),0);
                 Games::allGames.erase(Games::allGames.begin()+i);
                 return Response(true, std::to_string(LOSE)+"|"+std::to_string(sc2)+"|"+std::to_string(sc1)+"\n");
-            }
+            } return Response(false, std::to_string(INVALID_NICK));
         }
 
     }
@@ -257,7 +262,7 @@ Response CommunicationParser::surrender(int id, const std::string& nick) {
 }
 
 Response CommunicationParser::findGame(int id, const std::string& nick) {
-    for (GameRPS tmpGame: Games::allGames){
+    for (const GameRPS& tmpGame: Games::allGames){
         if ((tmpGame.player_2.id == id)||(tmpGame.player_1.id == id)){
             return Response(false, std::to_string(PLAY_STILL_IN_GAME)+"\n");
         }
@@ -280,7 +285,7 @@ Response CommunicationParser::findGame(int id, const std::string& nick) {
                     return Response(true, std::to_string(LOOKING_FOR_NEW_GAME)+"\n");
                 }
 
-            }
+            } return Response(false, std::to_string(INVALID_NICK));
         }
     }
 
@@ -307,7 +312,7 @@ Response CommunicationParser::exitClinet(int id, const std::string& nick) {
                 std::cout<<"Player ("<< Players::allPlayers.at(i).nick << ", id: " <<Players::allPlayers.at(i).id << ") logged out." << std::endl;
                 Players::allPlayers.erase(Players::allPlayers.begin()+i);
                 return Response(false, std::to_string(SUCCESSFUL_DISCONNECT)+ "\n");
-            }
+            }return Response(false, std::to_string(INVALID_NICK));
         }
     }
     std::cout << "Logging out failed for player ("<< nick << ", id: " << id << ")" << std::endl;

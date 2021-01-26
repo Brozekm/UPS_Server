@@ -27,6 +27,7 @@ int MyServer::init(const std::string& address, int port){
         return -2;
     }
 
+
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
     int enableOpt = 1;
@@ -37,7 +38,13 @@ int MyServer::init(const std::string& address, int port){
 
     my_addr.sin_family = AF_INET;
     my_addr.sin_port = htons(port);
-    my_addr.sin_addr.s_addr = inet_addr(address.c_str());
+    if (address == "localhost"){
+        std::string nAddress = "127.0.0.1";
+        my_addr.sin_addr.s_addr = inet_addr(nAddress.c_str());
+    }else{
+        my_addr.sin_addr.s_addr = inet_addr(address.c_str());
+    }
+
 
     return_value = bind(server_socket, (struct sockaddr *) &my_addr, \
             sizeof(struct sockaddr_in));
@@ -67,7 +74,7 @@ int MyServer::runServer() {
     while(true){
 
         tests = client_socks;
-        return_value = select( FD_SETSIZE, &tests, ( fd_set *)0, ( fd_set *)0, ( struct timeval *)0 );
+        return_value = select( FD_SETSIZE, &tests, ( fd_set *)nullptr, ( fd_set *)nullptr, ( struct timeval *)nullptr );
 
         if (return_value < 0) {
             printf("Select - ERR\n");
@@ -98,7 +105,7 @@ int MyServer::runServer() {
                         }else{
                             send(fd, response.response.c_str(), response.response.length(),0);
                             deleteAllSocketConnections(fd);
-                            printf("Client logged out and was removed from socket set for using wrong protocol\n");
+                            printf("Client logged out and was removed from socket set\n");
                         }
 
                     }
@@ -162,6 +169,8 @@ bool MyServer::correctPort(int port) {
     }
     return false;
 }
+
+
 
 void MyServer::clientDisconnected(int fd) {
     for(Player& tmpPlayer: Players::allPlayers){
